@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ナンプレ道場 — 上級テクニック</title>
+<style>
+:root { --line:#334; --thin:#bbc; --focus:#fff3b0; --unit:#e8f0ff; --sel:#ffd27a; --same:#dfe9d8; }
+* { box-sizing: border-box; }
+body { margin:0; font-family: "Hiragino Sans","Yu Gothic UI","Meiryo",sans-serif; background:#f5f5f7; color:#222; }
+header { background:#2b3a55; color:#fff; padding:10px 16px; display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
+header h1 { font-size:18px; margin:0; }
+header .sub { font-size:12px; opacity:.8; }
+.wrap { display:flex; gap:16px; padding:12px; flex-wrap:wrap; align-items:flex-start; }
+nav { width:230px; background:#fff; border-radius:10px; padding:8px; box-shadow:0 1px 3px #0002; }
+nav h3 { font-size:12px; color:#667; margin:10px 6px 4px; }
+nav button { display:flex; justify-content:space-between; width:100%; text-align:left; border:0; background:none; padding:7px 8px; border-radius:6px; font-size:14px; cursor:pointer; }
+nav button:hover { background:#eef; }
+nav button.on { background:#2b3a55; color:#fff; }
+nav .done { color:#3a3; font-size:12px; }
+nav button.on .done { color:#9f9; }
+main { flex:1; min-width:320px; display:flex; gap:16px; flex-wrap:wrap; align-items:flex-start; }
+.boardbox { background:#fff; border-radius:10px; padding:10px; box-shadow:0 1px 3px #0002; }
+.board { display:grid; grid-template-columns: 22px repeat(9, 1fr); grid-template-rows: 18px repeat(9, 1fr); width:min(92vw, 490px); aspect-ratio:1; }
+.lab { font-size:11px; color:#889; display:flex; align-items:center; justify-content:center; }
+.cell { position:relative; border-right:1px solid var(--thin); border-bottom:1px solid var(--thin); display:flex; align-items:center; justify-content:center; cursor:pointer; user-select:none; background:#fff; }
+.cell.c0 { border-left:2px solid var(--line); } .cell.c2,.cell.c5,.cell.c8 { border-right:2px solid var(--line); }
+.cell.r0 { border-top:2px solid var(--line); } .cell.r2,.cell.r5,.cell.r8 { border-bottom:2px solid var(--line); }
+.cell.unit { background:var(--unit); } .cell.same { background:var(--same); } .cell.focus { background:var(--focus); } .cell.sel { background:var(--sel); }
+.val { font-size:clamp(18px, 5vw, 30px); color:#1b55c9; }
+.cell.given .val { color:#111; font-weight:700; }
+.cell.wrong .val { color:#d22; text-decoration: underline wavy #d22; }
+.cands { display:grid; grid-template-columns:repeat(3,1fr); grid-template-rows:repeat(3,1fr); width:100%; height:100%; }
+.cands span { display:flex; align-items:center; justify-content:center; font-size:clamp(8px, 2vw, 13px); color:#556; border-radius:50%; margin:1px; }
+.cands span.key { background:#7ed67e; color:#000; font-weight:700; }
+.cands span.key2 { background:#7fb6ff; color:#000; font-weight:700; }
+.cands span.alt { background:#ffb35c; color:#000; font-weight:700; }
+.cands span.elim { background:#ff6b6b; color:#fff; font-weight:700; text-decoration: line-through; }
+.cands span.hit { background:#ffe066; }
+.pad { display:grid; grid-template-columns:repeat(9,1fr); gap:4px; margin-top:8px; }
+.pad button, .tools button { padding:8px 0; font-size:18px; border:1px solid #ccd; background:#fafbff; border-radius:6px; cursor:pointer; }
+.pad button small { display:block; font-size:9px; color:#889; }
+.pad button.out { opacity:.35; }
+.tools { display:flex; gap:4px; margin-top:6px; flex-wrap:wrap; }
+.tools button { flex:1; font-size:13px; padding:8px 4px; min-width:70px; }
+.tools button.on { background:#2b3a55; color:#fff; }
+.side { flex:1; min-width:300px; max-width:520px; display:flex; flex-direction:column; gap:12px; }
+.card { background:#fff; border-radius:10px; padding:12px 14px; box-shadow:0 1px 3px #0002; font-size:14px; line-height:1.75; }
+.card h2 { font-size:18px; margin:0 0 6px; }
+.card h4 { margin:10px 0 2px; font-size:14px; color:#2b3a55; }
+.btns { display:flex; gap:6px; flex-wrap:wrap; margin-top:8px; }
+.btns button { padding:8px 12px; border-radius:6px; border:1px solid #2b3a55; background:#fff; cursor:pointer; font-size:14px; }
+.btns button.main { background:#2b3a55; color:#fff; }
+.msg { min-height:1.5em; }
+.msg.good { color:#187a18; } .msg.bad { color:#c22; }
+.tk { background:#7ed67e; padding:0 4px; border-radius:4px; } .tk2 { background:#7fb6ff; padding:0 4px; border-radius:4px; }
+.ta { background:#ffb35c; padding:0 4px; border-radius:4px; } .te { background:#ff6b6b; color:#fff; padding:0 4px; border-radius:4px; }
+.legend { font-size:12px; color:#556; margin-top:6px; line-height:1.6; }
+.hint { border-left:4px solid #ffb35c; }
+</style>
+</head>
+<body>
+<header><h1>ナンプレ道場</h1><span class="sub">ふつうに解いても解けない問題で、上級テクニックを身につける</span></header>
+<div class="wrap">
+  <nav id="nav"></nav>
+  <main>
+    <div class="boardbox">
+      <div class="board" id="board"></div>
+      <div class="pad" id="pad"></div>
+      <div class="tools">
+        <button id="mNum" class="on">数字を入れる</button>
+        <button id="mCand">候補を消す/戻す</button>
+        <button id="bErase">数字を消す</button>
+        <button id="bUndo">元に戻す</button>
+      </div>
+      <div class="tools">
+        <button id="bSingles">シングルを全部うめる</button>
+        <button id="bRestart">この問題を最初から</button>
+      </div>
+      <div class="legend">R=行（上から）・C=列（左から）。例: R3C5 は3行目・5列目。<br>
+        <span class="tk">緑</span>・<span class="tk2">青</span> 手がかり　<span class="ta">橙</span> 注目の候補　<span class="te">赤</span> 消せる候補<br>
+        キーボード: 1〜9 入力／スペース 入力と候補の切りかえ／矢印 移動／Ctrl+Z 元に戻す</div>
+    </div>
+    <div class="side">
+      <div class="card hint" id="hintCard">
+        <div class="msg" id="msg"></div>
+        <div class="btns">
+          <button id="bHint" class="main">ヒント</button>
+          <button id="bApply" style="display:none">この手を使う</button>
+          <button id="bCheck">まちがいを調べる</button>
+        </div>
+      </div>
+      <div class="card" id="lesson"></div>
+    </div>
+  </main>
+</div>
+<script src="engine.js"></script>
+<script src="puzzles.js"></script>
+<script>
+'use strict';
+const N = window.Nanpre;
+const LESSON = {
+  locked: { lead: '<b>ブロック</b>と<b>行・列</b>が重なるところに候補がしぼられると、外側から消せます。',
+    body: `<h4>ポインティング</h4>あるブロックの中で、数字Xの候補が<b>1本の行（列）にだけ</b>並んでいるとき、Xはその行のブロック内のどこかに必ず入ります。だから<b>同じ行のブロックの外</b>のXは消せます。
+<h4>クレーミング</h4>ある行（列）の中で、Xの候補が<b>1つのブロックにだけ</b>あるとき、そのブロックのXはその行で決まります。だから<b>同じブロックのほかのマス</b>のXは消せます。
+<h4>探し方</h4>数字を1つ決めて、ブロックごとに候補の並びを見ます。` },
+  npair: { lead: '同じグループに、候補が同じ2つだけのマスが2つあれば、その2数字は使い切り。',
+    body: `<h4>形</h4>行・列・ブロックのどれかで、候補が {A・B} だけのマスが2つ。
+<h4>なぜ消せる？</h4>2マスにAとBが1つずつ入るので、グループのほかのマスにAもBも入れません。
+<h4>探し方</h4>候補が2つのマスを見つけたら、同じグループに同じ組がないか見ます。` },
+  hpair: { lead: '2つの数字の入れる場所が同じ2マスだけなら、その2マスのほかの候補は消せる。',
+    body: `<h4>形</h4>グループの中で、数字Aも数字Bも、入れるのが同じ2マスだけ。その2マスにはほかの候補もまざっている。
+<h4>なぜ消せる？</h4>AとBはどちらもこの2マスのどれかに入るしかないので、2マスはAとBで埋まります。
+<h4>探し方</h4>グループの中で「この数字はどこに入れる？」と数えます。2か所しかない数字が2つあって、場所が同じなら当たり。` },
+  ntriple: { lead: '3マスの候補を合わせて3種類なら、その3数字は3マスで使い切り。',
+    body: `<h4>形</h4>同じグループの3マスの候補を合わせると {A・B・C} の3種類だけ。全部のマスが3つ持っている必要はありません（{A・B}{B・C}{A・C} でもよい）。
+<h4>なぜ消せる？</h4>3マスに3種類が1つずつ入るので、グループのほかのマスからA・B・Cを消せます。
+<h4>探し方</h4>候補が2〜3つのマスを3つ選び、合わせて3種類になるか見ます。ペアより見落としやすい形です。` },
+  htriple: { lead: '3つの数字の入れる場所が3マスだけなら、その3マスのほかの候補は消せる。',
+    body: `<h4>形</h4>グループの中で数字A・B・Cが入れる場所を合わせると、ちょうど3マス。
+<h4>なぜ消せる？</h4>3種類の数字が3マスに入るしかないので、その3マスは A・B・C で埋まります。
+<h4>探し方</h4>ヒドゥンペアと同じく「この数字はどこに入れる？」を数えます。いちばん見つけにくい形のひとつです。` },
+  xwing: { lead: '数字Xが2本の行で、同じ2列にしか入れないとき、その2列のほかのXは消せる。',
+    body: `<h4>形</h4>数字Xの候補が、<b>2つの行</b>でそれぞれ<b>ちょうど2か所</b>、しかも<b>同じ2つの列</b>にある（長方形の4つの角）。
+<h4>なぜ消せる？</h4>Xは長方形の「左上と右下」か「右上と左下」のどちらかに入ります。どちらでも、2つの列にはXが1つずつ入るので、<b>その2列のほかの行</b>のXは消せます。
+<h4>探し方</h4>1つの数字だけを見て、候補が2か所しかない行を書き出し、列がそろう2本をさがします。行と列を入れかえても同じです。` },
+  skyscraper: { lead: 'Xウィングの片側がずれた形。屋根の2マスの両方から見えるマスのXを消せる。',
+    body: `<h4>形</h4>数字Xが<b>2か所だけ</b>の行が2本。片方の端（<span class="tk">土台</span>）は同じ列にそろい、もう片方の端（<span class="ta">屋根</span>）はずれている。
+<h4>なぜ消せる？</h4>土台の列ではXは1つしか入らないので、2本の行のどちらかは土台がXでない → その行は屋根がX。だから<b>屋根の少なくとも一方はX</b>。
+両方の屋根から見えるマスにはXが入りません。
+<h4>探し方</h4>Xウィングを探すときに「1列だけそろっている」組を見つけたら、これを思い出します。` },
+  kite: { lead: '行の強リンクと列の強リンクが1つのブロックでつながる形。',
+    body: `<h4>形</h4>数字Xが<b>2か所だけの行</b>と<b>2か所だけの列</b>があり、それぞれの片端（<span class="tk">緑</span>）が<b>同じブロック</b>の中にある（同じマスではない）。
+<h4>なぜ消せる？</h4>同じブロックの緑2マスは両方Xにはなれません。緑の片方がXでなければ、その行（列）の反対の端（<span class="ta">橙</span>）がX。だから<b>橙の少なくとも一方はX</b>。
+両方の橙から見えるマス（たいていは1マス）のXを消せます。
+<h4>探し方</h4>1つの数字で、2か所だけの行と列を書き出し、同じブロックで出会うものをさがします。` },
+  xywing: { lead: '候補2つのマス3つで「どちらにしてもZ」を作る形。',
+    body: `<h4>形</h4>中心 {X・Y}、はさみ {X・Z} と {Y・Z}。はさみは2つとも中心から見える（はさみ同士は見えなくてよい）。
+<h4>なぜ消せる？</h4>中心がXなら {X・Z} のはさみがZ。中心がYなら {Y・Z} のはさみがZ。<b>どちらにしても、はさみのどちらかはZ</b>。
+だから<b>両方のはさみから見えるマス</b>のZを消せます。
+<h4>探し方</h4>候補が2つのマスに注目。中心候補を決めて、そこから見える2候補マスで「1つずつ共有して、残りが同じ数字」になる組をさがします。` },
+  xyzwing: { lead: 'XYウィングの中心が候補3つになった形。消せる範囲がせまくなる。',
+    body: `<h4>形</h4>中心 {X・Y・Z}、はさみ {X・Z} と {Y・Z}（はさみは中心から見える）。
+<h4>なぜ消せる？</h4>中心がX → はさみ{X・Z}がZ。中心がY → はさみ{Y・Z}がZ。中心がZ → 中心がZ。<b>3マスのどれかは必ずZ</b>。
+だから<b>3マス全部から見えるマス</b>のZを消せます（中心のブロックの中にあることが多い）。
+<h4>探し方</h4>候補3つのマスから見える、候補2つのマスを見ます。` },
+  wwing: { lead: '同じ {X・Y} の2マスを、Xの強リンクでつなぐ形。',
+    body: `<h4>形</h4>候補が同じ {X・Y} の2マスA・B（お互いに見えない）。そして、Xが<b>2か所だけ</b>のグループがあり、その片方はAから、もう片方はBから見える。
+<h4>なぜ消せる？</h4>もしAもBもXなら、2か所だけのグループの両方からXが消えて、そこにXが入らなくなる（矛盾）。だから<b>AかBの少なくとも一方はY</b>。
+<b>A・B両方から見えるマス</b>のYを消せます。
+<h4>探し方</h4>同じ候補ペアで、離れた2マスを見つけたら、その2数字それぞれについて「つなぐ強リンク」がないかさがします。` },
+  swordfish: { lead: 'Xウィングの3本版。3本の行のXが3本の列にとじこめられている。',
+    body: `<h4>形</h4>数字Xが<b>3本の行</b>で、それぞれ2〜3か所、合わせて<b>3本の列</b>の中にしかない。
+<h4>なぜ消せる？</h4>3本の行にXが1つずつ、合計3つ入ります。それは3本の列に1つずつ入るので、<b>その3列のほかの行</b>のXは消せます。
+<h4>探し方</h4>候補が2〜3か所の行を書き出し、列が3本にまとまる組をさがします。1つの行が2か所だけでも構いません。` },
+  coloring: { lead: '1つの数字の強リンクを鎖にして、2色で塗り分ける。',
+    body: `<h4>強リンク</h4>あるグループで数字Xが<b>2か所だけ</b>のとき、「片方がXでなければ、もう片方がX」。この2マスをつなぎます。
+<h4>塗り分け</h4>つながった鎖を、<span class="tk">緑</span>・<span class="tk2">青</span>と交互に塗ります。<b>どちらか一方の色が全部X</b>です。
+<h4>消し方</h4>① 同じ色の2マスが同じグループにある → その色はまちがい。その色のXを全部消す。<br>② 緑と青の<b>両方から見えるマス</b>のXは消せる。
+<h4>探し方</h4>スカイスクレイパーや2ストリングカイトは、この鎖の短い形です。長い鎖を作れる数字をさがします。` },
+  ur1: { lead: '「答えは1つ」を使う技。長方形が全部2択になる形は作れない。',
+    body: `<h4>形</h4><b>2行×2列</b>、しかも<b>2つのブロック</b>にまたがる長方形の4マス。そのうち3マスの候補が {A・B} だけ。
+<h4>なぜ消せる？</h4>もし4つ目のマスもAかBなら、4マスのAとBを入れかえた答えも成り立ち、答えが2つになってしまいます。問題の答えは1つなので、<b>4つ目のマスにはA・B以外</b>が入ります。
+<h4>注意</h4>答えが1つだと分かっている問題（ふつうのナンプレ）でだけ使えます。` },
+  bug: { lead: '全部のマスが2択になりかけたら、ただ1つの3択マスが答えを決める。',
+    body: `<h4>形</h4>残りのマスが<b>全部候補2つ</b>で、<b>1マスだけ候補3つ</b>。
+<h4>なぜ決まる？</h4>全部のマスが2択（どの数字もグループに2回ずつ）になると、答えが2つ以上になってしまいます（BUG）。答えは1つなので、3択のマスには、
+そのマスの行（列・ブロック）で<b>3回出てくる候補の数字</b>が入ります。
+<h4>探し方</h4>終盤に、候補3つのマスが1つしか残っていないことに気づいたら使えます。` },
+};
+const GROUPS = [['基本の上級技', 1], ['ウィングとリンク', 2], ['上級', 3]];
+const $ = id => document.getElementById(id);
+let done = JSON.parse(localStorage.getItem('nanpure-done') || '{}');   // テクニックごとの解いた問題番号
+
+let tech = null, puzzle = null, sol = '', st = null, given = [], hist = [], sel = -1, mode = 'num';
+let hint = null, hintLv = 0, target = null, found = new Set(), curNo = 0, pIdx = {};
+
+function markDone() {
+  if (!tech || tech === 'random') return;
+  const a = new Set(done[tech] || []); a.add(curNo); done[tech] = [...a];
+  localStorage.setItem('nanpure-done', JSON.stringify(done)); buildNav();
+}
+function buildNav() {
+  const nav = $('nav'); nav.innerHTML = '';
+  for (const [g, lv] of GROUPS) {
+    nav.appendChild(Object.assign(document.createElement('h3'), { textContent: g }));
+    for (const t of N.TECHS.filter(t => t.lv === lv)) {
+      const b = document.createElement('button');
+      const n = (done[t.id] || []).length;
+      b.innerHTML = `<span>${t.name}</span><span class="done">${n ? '✓' + n : ''}</span>`;
+      if (tech === t.id) b.className = 'on';
+      b.onclick = () => openTech(t.id);
+      nav.appendChild(b);
+    }
+  }
+  nav.appendChild(Object.assign(document.createElement('h3'), { textContent: '腕だめし' }));
+  const b = document.createElement('button'); b.innerHTML = '<span>ランダムな難問</span>';
+  if (tech === 'random') b.className = 'on';
+  b.onclick = () => openTech('random'); nav.appendChild(b);
+}
+const techName = id => N.TECHS[N.TECH_INDEX[id]].name;
+
+function openTech(id) {
+  tech = id; buildNav();
+  const L = $('lesson');
+  if (id === 'random') {
+    L.innerHTML = `<h2>腕だめし</h2>どのテクニックが要るかは伏せてあります。行きづまったら「ヒント」で、次に使うテクニックの名前から順に教えます。
+      <div class="btns"><button class="main" onclick="loadRandom()">新しい問題</button></div>`;
+    loadRandom(); return;
+  }
+  const t = LESSON[id];
+  L.innerHTML = `<h2>${techName(id)}</h2><div>${t.lead}</div>${t.body}
+    <div class="btns">
+      <button class="main" onclick="loadPuzzle('${id}', 'example')">例題を見る</button>
+      <button onclick="loadPuzzle('${id}', 'practice')">練習（山場から）</button>
+      <button onclick="loadPuzzle('${id}', 'full')">練習（最初から）</button>
+    </div>`;
+  loadPuzzle(id, 'example');
+}
+function loadPuzzle(id, how) {
+  const list = PUZZLES[id];
+  if (how === 'example') curNo = 0;
+  else { pIdx[id] = ((pIdx[id] || 0) % (list.length - 1)) + 1; curNo = pIdx[id]; }   // 0番は例題、練習は1番から順に
+  const p = list[curNo];
+  setPuzzle(p.g);
+  if (how === 'full') {
+    say(`練習 第${curNo}問（最初から）: 途中で「${techName(id)}」を使わないと進めなくなる問題です。`);
+  } else {
+    // 山場まで進める（それより前の手は全部使う）
+    const r = N.solveLogic(p.g);
+    for (let s = 0; s < p.s; s++) N.applyStep(st, r.steps[s]);
+    target = N.findStep(st);
+    if (how === 'example') {
+      hint = target; hintLv = 3; $('bApply').style.display = '';
+      say(`<b>例題</b>: ここまではふつうの方法で進めました。ここから先は「${techName(id)}」が要ります。<br>${target.text}<br>「この手を使う」で候補を消して、続きを解いてみよう。`);
+    } else {
+      say(`練習 第${curNo}問（山場から）: ふつうの方法で進められるところまで進めました。ここで「${techName(id)}」を見つけよう。<br>見つけたら「候補を消す/戻す」に切りかえて、消せる候補を消してください。`);
+    }
+  }
+  render();
+}
+function loadRandom() {
+  const ids = Object.keys(PUZZLES).filter(k => N.TECHS[N.TECH_INDEX[k]].lv >= 2);
+  const list = PUZZLES[ids[(Math.random() * ids.length) | 0]];
+  setPuzzle(list[(Math.random() * list.length) | 0].g);
+  say('最初から解いてみよう。'); render();
+}
+function setPuzzle(g) {
+  puzzle = g; sol = N.solution(g); st = N.fromString(g);
+  given = [...g].map(ch => ch >= '1' && ch <= '9');
+  hist = []; sel = -1; target = null; found = new Set(); clearHint();
+}
+function say(html, cls = '') { const m = $('msg'); m.innerHTML = html; m.className = 'msg ' + cls; }
+function push() { hist.push(N.clone(st)); }
+function clearHint() { hint = null; hintLv = 0; $('bApply').style.display = 'none'; }
+
+function render() {
+  const B = $('board'); B.innerHTML = '';
+  const div = (cls, txt) => Object.assign(document.createElement('div'), { className: cls, textContent: txt || '' });
+  B.appendChild(div('lab'));
+  for (let c = 0; c < 9; c++) B.appendChild(div('lab', 'C' + (c + 1)));
+  const showHL = hint && hintLv >= 2;
+  const unitCells = new Set(), focus = new Set(showHL ? hint.cells || [] : []), markMap = {};
+  if (showHL) {
+    for (const u of hint.units || []) for (const i of N.UNITS[u]) unitCells.add(i);
+    for (const m of hint.marks || []) markMap[m.i * 10 + m.d] = m.k;
+  }
+  if (hint && hintLv >= 3) {
+    for (const e of hint.elim || []) markMap[e.i * 10 + e.d] = 'elim';
+    for (const p of hint.place || []) focus.add(p.i);
+  }
+  const sd = sel >= 0 && st.v[sel] ? st.v[sel] : 0;
+  for (let r = 0; r < 9; r++) {
+    B.appendChild(div('lab', 'R' + (r + 1)));
+    for (let c = 0; c < 9; c++) {
+      const i = r * 9 + c, d = document.createElement('div');
+      let cls = `cell r${r} c${c}`;
+      if (unitCells.has(i)) cls += ' unit';
+      if (sd && st.v[i] === sd) cls += ' same';
+      if (focus.has(i)) cls += ' focus';
+      if (i === sel) cls += ' sel';
+      if (given[i]) cls += ' given';
+      if (st.v[i] && !given[i] && +sol[i] !== st.v[i]) cls += ' wrong';
+      d.className = cls;
+      if (st.v[i]) d.innerHTML = `<span class="val">${st.v[i]}</span>`;
+      else {
+        let h = '<div class="cands">';
+        for (let k = 1; k <= 9; k++) {
+          const on = st.c[i] & N.bit(k);
+          const mk = markMap[i * 10 + k] || (sd === k ? 'hit' : '');
+          h += on ? `<span class="${mk}">${k}</span>` : '<span></span>';
+        }
+        d.innerHTML = h + '</div>';
+      }
+      d.onclick = () => { sel = i; render(); };
+      B.appendChild(d);
+    }
+  }
+  const P = $('pad'); P.innerHTML = '';
+  for (let k = 1; k <= 9; k++) {
+    const left = 9 - st.v.filter(x => x === k).length;
+    const b = document.createElement('button');
+    b.innerHTML = `${k}<small>のこり${left}</small>`; if (!left) b.className = 'out';
+    b.onclick = () => input(k); P.appendChild(b);
+  }
+  $('mNum').className = mode === 'num' ? 'on' : '';
+  $('mCand').className = mode === 'cand' ? 'on' : '';
+}
+function input(k) {
+  if (sel < 0 || given[sel]) return;
+  if (mode === 'num') {
+    if (st.v[sel] === k) return;
+    push(); clearHint();
+    if (st.v[sel]) erase(sel);
+    N.place(st, sel, k);
+    if (+sol[sel] !== k) say(`${N.name(sel)} に ${k} は入りません。「元に戻す」で戻してください。`, 'bad');
+    else if (target && (target.place || []).some(p => p.i === sel && p.d === k)) {
+      say(`<b>正解！</b> ${target.techName}です。<br>${target.text}<br>続けて最後まで解いてみよう。`, 'good');
+      markDone(); hint = target; hintLv = 3; target = null;
+    } else afterMove();
+  } else {
+    if (st.v[sel]) return;
+    const b = N.bit(k);
+    if (st.c[sel] & b) {
+      push(); clearHint(); st.c[sel] &= ~b;
+      if (+sol[sel] === k) say(`⚠ ${N.name(sel)} の ${k} は消してはいけない候補です。「元に戻す」で戻してください。`, 'bad');
+      else checkTarget(sel, k);
+    } else if (N.PEERS[sel].some(p => st.v[p] === k)) say(`${k} は同じ行・列・ブロックに入っているので、候補に戻せません。`);
+    else { push(); st.c[sel] |= b; say(`${N.name(sel)} に候補 ${k} を戻しました。`); }
+  }
+  render();
+}
+function erase(i) {
+  // 数字を消す: そのマスの候補を作り直し、まわりのマスにもその数字の候補を戻す
+  const d = st.v[i]; st.v[i] = 0;
+  const free = (j, x) => !N.PEERS[j].some(p => st.v[p] === x);
+  st.c[i] = 0; for (let x = 1; x <= 9; x++) if (free(i, x)) st.c[i] |= N.bit(x);
+  for (const p of N.PEERS[i]) if (!st.v[p] && free(p, d)) st.c[p] |= N.bit(d);
+}
+function checkTarget(i, k) {
+  if (!target) { say(`${N.name(i)} から ${k} を消しました。`); return; }
+  const key = i * 10 + k;
+  if ((target.elim || []).some(e => e.i * 10 + e.d === key)) {
+    found.add(key);
+    const all = target.elim.length;
+    if (found.size >= all) {
+      say(`<b>正解！</b> ${target.techName}です。<br>${target.text}<br>続けて最後まで解いてみよう。`, 'good');
+      markDone(); hint = target; hintLv = 3; target = null;
+    } else say(`いいですね。${N.name(i)} の ${k} は${target.techName}で消せます（あと ${all - found.size} 個）。`, 'good');
+  } else say(`${N.name(i)} の ${k} は消してもかまいませんが、いまさがしている手ではありません。`);
+}
+function afterMove() {
+  if (N.isSolved(st) && [...st.v].join('') === sol) { say('🎉 クリア！ 全部うまりました。', 'good'); markDone(); }
+  else say('');
+}
+function mistakes() {
+  const wrongV = [], wrongC = [];
+  for (let i = 0; i < 81; i++) {
+    if (st.v[i] && +sol[i] !== st.v[i]) wrongV.push(`${N.name(i)} の ${st.v[i]}`);
+    if (!st.v[i] && !(st.c[i] & N.bit(+sol[i]))) wrongC.push(`${N.name(i)} で消した候補 ${sol[i]}`);
+  }
+  return wrongV.length ? wrongV : wrongC;
+}
+function doHint() {
+  const bad = mistakes();
+  if (bad.length) { say('まちがいがあります: ' + bad.slice(0, 4).join('、') + (bad.length > 4 ? ' ほか' : '') + '。「元に戻す」で直してから続けよう。', 'bad'); return; }
+  if (N.isSolved(st)) { say('もう全部うまっています。', 'good'); return; }
+  if (!hint) { hint = N.findStep(st); hintLv = 0; }
+  if (!hint) { say('このアプリのテクニックでは、次の一手が見つかりません。'); return; }
+  hintLv = Math.min(3, hintLv + 1);
+  const tn = `<b>${hint.techName}${hint.sub ? '（' + hint.sub + '）' : ''}</b>`;
+  if (hintLv === 1) say(`ヒント1: ${tn} — ${hint.h1}<br>（もう一度おすと、場所を見せます）`);
+  if (hintLv === 2) say(`ヒント2: ${tn} — ${hint.h2}<br>色のついたマスに注目。（もう一度おすと、答えと理由）`);
+  if (hintLv === 3) { say(`${tn}<br>${hint.text}`); $('bApply').style.display = ''; }
+  render();
+}
+function applyHint() {
+  if (!hint) return;
+  push(); N.applyStep(st, hint);
+  if (hint === target) target = null;
+  clearHint(); afterMove(); render();
+}
+function fillSingles() {
+  const bad = mistakes(); if (bad.length) { say('先にまちがいを直してください: ' + bad.slice(0, 3).join('、'), 'bad'); return; }
+  push(); clearHint(); let n = 0;
+  for (;;) { const s = N.findStep(st, 1); if (!s) break; N.applyStep(st, s); n++; }
+  if (!n) { hist.pop(); say('シングルでうめられるマスはありません。'); return; }
+  render();
+  if (N.isSolved(st)) afterMove(); else say(`シングルで ${n} マスうめました。ここからは上級テクニックが要ります。`);
+}
+$('bHint').onclick = doHint;
+$('bApply').onclick = applyHint;
+$('bCheck').onclick = () => { const b = mistakes(); say(b.length ? 'まちがい: ' + b.join('、') : 'いまのところ、まちがいはありません。', b.length ? 'bad' : 'good'); };
+$('mNum').onclick = () => { mode = 'num'; render(); };
+$('mCand').onclick = () => { mode = 'cand'; render(); };
+$('bErase').onclick = () => { if (sel < 0 || given[sel] || !st.v[sel]) return; push(); clearHint(); erase(sel); say(''); render(); };
+$('bUndo').onclick = () => { if (hist.length) { st = hist.pop(); clearHint(); say('1手もどしました。'); render(); } };
+$('bSingles').onclick = fillSingles;
+$('bRestart').onclick = () => { if (puzzle && confirm('この問題を最初からやり直しますか？')) { setPuzzle(puzzle); say('最初からです。'); render(); } };
+document.addEventListener('keydown', e => {
+  if (!st) return;
+  if (e.key >= '1' && e.key <= '9') input(+e.key);
+  else if (e.key === 'Backspace' || e.key === 'Delete' || e.key === '0') $('bErase').click();
+  else if (e.key === ' ') { mode = mode === 'num' ? 'cand' : 'num'; render(); e.preventDefault(); }
+  else if (e.key.startsWith('Arrow')) {
+    if (sel < 0) sel = 40;
+    const r = N.ROW(sel), c = N.COL(sel);
+    sel = { ArrowUp: ((r + 8) % 9) * 9 + c, ArrowDown: ((r + 1) % 9) * 9 + c, ArrowLeft: r * 9 + (c + 8) % 9, ArrowRight: r * 9 + (c + 1) % 9 }[e.key];
+    render(); e.preventDefault();
+  } else if (e.key === 'z' && (e.ctrlKey || e.metaKey)) { $('bUndo').click(); e.preventDefault(); }
+});
+buildNav();
+openTech('xwing');
+</script>
+</body>
+</html>
